@@ -169,27 +169,17 @@ def get_bayes_risk_from_pld(pld, prior):
         >>> risk = get_bayes_risk_from_pld(pld, prior=0.5)
 
     References:
-        Kulynych et al. (2025), Proposition D.1. https://arxiv.org/abs/2507.06969
+        Kulynych et al. (2025), Proposition D.1 / Eq. 35.
+        https://arxiv.org/abs/2507.06969
     """
     prior, is_scalar = _ensure_array(prior)
-
-    bayes_risk = []
-    for prior_val in prior:
-        result = optimize.minimize_scalar(
-            lambda x: prior_val * x + (1 - prior_val) * get_beta_from_pld(pld, alpha=x),
-            bounds=(0, 1),
-            method="bounded",
-        )
-        if not result.success:
-            warnings.warn(f"Optimization failed for prior = {prior_val:.4f}")
-            bayes_risk.append(np.nan)
-        else:
-            bayes_risk.append(result.fun)
+    epsilon = np.log(prior / (1 - prior))
+    delta = np.array([pld.get_delta_for_epsilon(e) for e in epsilon])
+    bayes_risk = (1 - prior) * (1 - delta)
 
     if is_scalar:
         return bayes_risk[0]
-    else:
-        return np.array(bayes_risk)
+    return np.array(bayes_risk)
 
 
 # =============================================================================
@@ -244,27 +234,22 @@ def get_bayes_risk_from_gdp(mu, prior):
         Bayes risk value(s). Float if prior is scalar, array if prior is array.
 
     References:
-        Kaissis et al. (2024), Eq. 2. https://arxiv.org/abs/2406.08918
+        Kulynych et al. (2025), Proposition D.1 / Eq. 35.
+        https://arxiv.org/abs/2507.06969
+        Dong et al. (2019), Corollary 2.13. https://arxiv.org/abs/1905.02383
     """
     assert mu >= 0, "mu must be >= 0"
     prior, is_scalar = _ensure_array(prior)
-
-    bayes_risk = []
-    for prior_val in prior:
-        pi = np.array([1 - prior_val, prior_val])
-        result = np.zeros_like(pi, dtype=float)
-        result[pi == 1] = 0
-
-        mask = (pi != 0) & (pi != 1)
-        a = ((-(mu**2) / 2) - np.log(pi[mask]) - np.log(-1 / (pi[mask] - 1))) / mu
-        b = ((mu**2 / 2) - np.log(pi[mask]) - np.log(-1 / (pi[mask] - 1))) / mu
-        result[mask] = pi[mask] * stats.norm.cdf(a) + (1 - pi[mask]) * stats.norm.sf(b)
-        bayes_risk.append(result[1])
+    epsilon = np.log(prior / (1 - prior))
+    # Gaussian privacy profile: Dong et al. (2019), Corollary 2.13
+    delta = stats.norm.cdf(-epsilon / mu + mu / 2) - np.exp(epsilon) * stats.norm.cdf(
+        -epsilon / mu - mu / 2
+    )
+    bayes_risk = (1 - prior) * (1 - delta)
 
     if is_scalar:
         return bayes_risk[0]
-    else:
-        return np.array(bayes_risk)
+    return np.array(bayes_risk)
 
 
 # Backward compatibility aliases
