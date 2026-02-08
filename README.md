@@ -1,5 +1,6 @@
 ## riskcal
 
+[![pypi](https://img.shields.io/pypi/v/riskcal)](https://pypi.org/project/riskcal/)
 [![docs](https://app.readthedocs.org/projects/riskcal/badge/?version=latest)](https://riskcal.readthedocs.io/latest/)
 [![CI](https://github.com/bogdan-kulynych/riskcal/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bogdan-kulynych/riskcal/actions/workflows/ci.yml)
 [![arXiv](https://img.shields.io/badge/arXiv-2407.02191-b31b1b.svg)](https://arxiv.org/abs/2407.02191)
