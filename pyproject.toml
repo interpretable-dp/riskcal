@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/Felipe-Gomez/riskcal.git"
+Repository = "https://github.com/interpretable-dp/riskcal.git"
 
 [project.optional-dependencies]
 docs = [
