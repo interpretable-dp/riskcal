@@ -50,18 +50,6 @@ Functions for computing risk metrics from zCDP parameters.
 
 .. autofunction:: riskcal.analysis.get_advantage_from_zcdp
 
-zCDP approximations
--------------------
-
-Fast approximate conversions from zCDP to GDP-based risk metrics using fitted mappings.
-These provide near-instant computation with <0.025 error for typical parameter ranges.
-
-.. autofunction:: riskcal.analysis.get_mu_from_zcdp_approx
-
-.. autofunction:: riskcal.analysis.get_beta_from_zcdp_approx
-
-.. autofunction:: riskcal.analysis.get_advantage_from_zcdp_approx
-
 Internal utilities
 ------------------
 

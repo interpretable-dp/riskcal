@@ -360,8 +360,8 @@ def get_beta_from_rdp(
     epsilon: float,
     alpha: Union[float, np.ndarray],
     order: float,
-    linear_search_step: float = 1e-3,   # unused; kept for backward compatibility
-    max_bisection_steps: int = 50,       # unused; kept for backward compatibility
+    linear_search_step: float = 1e-3,  # unused; kept for backward compatibility
+    max_bisection_steps: int = 50,  # unused; kept for backward compatibility
     tol: float = 1e-7,
 ) -> Union[float, np.ndarray]:
     """
@@ -400,7 +400,7 @@ def get_beta_from_zcdp(
     alpha: Union[float, np.ndarray],
     max_bisection_steps: int = 100,
     linear_search_step: float = 5e-4,
-    tol: float = 1e-4,
+    tol: float = 1e-9,
     max_order: Optional[float] = None,
     order_grid_size: Optional[int] = None,
 ) -> Union[float, np.ndarray]:
@@ -477,7 +477,7 @@ def get_beta_from_zcdp(
             # wide order grid intentionally includes orders where the RDP bound
             # is vacuous (returns 0). That is expected algorithm behaviour, not
             # a caller mistake.
-            orders = np.logspace(np.log10(0.5), np.log10(max_order), order_grid_size)
+            orders = np.logspace(0, np.log10(max_order), order_grid_size)
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore", RuntimeWarning)
                 betas_for_orders = np.array(
@@ -517,8 +517,8 @@ def get_beta_from_zcdp(
                         ),
                         bounds=(order_low, order_high),
                         method="bounded",
-                    options={"xatol": tol},
-                )
+                        options={"xatol": tol},
+                    )
 
                 if result.success and (abs(result.x - max_order) <= tol):
                     warnings.warn(
@@ -592,113 +592,3 @@ def get_advantage_from_zcdp(
         return np.nan
     else:
         return -result.fun
-
-
-def get_mu_from_zcdp_approx(rho: float) -> float:
-    """
-    Approximate mapping from zCDP parameter rho to GDP parameter mu.
-
-    Uses a fitted polynomial approximation to convert zCDP rho to an equivalent
-    GDP mu parameter. This approximation is much faster than exact conversion
-    methods while maintaining high accuracy.
-
-    Args:
-        rho: Zero-concentrated differential privacy parameter.
-
-    Returns:
-        Approximate GDP parameter mu.
-
-    Example:
-        >>> import numpy as np
-        >>> mu = get_mu_from_zcdp_approx(rho=0.5)
-        >>> np.round(mu, 3)
-        1.214
-
-    Note:
-        Fitted for rho values in [0.005, 8.5]. Maximum pointwise difference
-        in resulting trade-off curve is <0.025 for FNR values >0.01.
-
-    References:
-        Bun & Steinke (2016). https://arxiv.org/abs/1605.02065
-        Dong et al. (2019), Corollary 2.13. https://arxiv.org/abs/1905.02383
-    """
-    return (
-        1.5822558654881096 * np.sqrt(rho)
-        + 0.08064620797681155 * rho
-        + 0.05485600531538526
-    )
-
-
-def get_beta_from_zcdp_approx(
-    rho: float,
-    alpha: Union[float, np.ndarray],
-) -> Union[float, np.ndarray]:
-    """
-    Approximate FNR for FPR from zCDP parameter rho using GDP approximation.
-
-    Computes the trade-off curve by first approximating zCDP with GDP, then
-    using the analytical GDP formula. This is much faster than exact zCDP
-    computation while maintaining high accuracy.
-
-    Args:
-        rho: Zero-concentrated differential privacy parameter.
-        alpha: False positive rate(s) in [0, 1]. Can be scalar or array.
-
-    Returns:
-        False negative rate(s) corresponding to input alpha. Returns float if
-        alpha is scalar, array if alpha is array.
-
-    Example:
-        >>> import numpy as np
-        >>> # Single alpha value
-        >>> beta = get_beta_from_zcdp_approx(rho=0.5, alpha=0.1)
-        >>> np.round(beta, 3)
-        0.527
-        >>> # Multiple alpha values
-        >>> betas = get_beta_from_zcdp_approx(rho=0.5, alpha=np.array([0.1, 0.2, 0.3]))
-        >>> np.round(betas, 3)
-        array([0.527, 0.355, 0.245])
-
-    Note:
-        Fitted for rho values in [0.005, 8.5]. Maximum pointwise error
-        is <0.025 for FNR values >0.01. For higher accuracy, use
-        `get_beta_from_zcdp()`.
-
-    References:
-        Bun & Steinke (2016). https://arxiv.org/abs/1605.02065
-        Dong et al. (2019), Eq. 6. https://arxiv.org/abs/1905.02383
-    """
-    return get_beta_from_gdp(get_mu_from_zcdp_approx(rho), alpha=alpha)
-
-
-def get_advantage_from_zcdp_approx(
-    rho: float,
-) -> float:
-    """
-    Approximate attack advantage from zCDP parameter rho using GDP approximation.
-
-    Computes advantage by first approximating zCDP with GDP, then using the
-    analytical GDP formula. This is much faster than exact zCDP computation
-    while maintaining high accuracy.
-
-    Args:
-        rho: Zero-concentrated differential privacy parameter.
-
-    Returns:
-        Maximum attack advantage.
-
-    Example:
-        >>> import numpy as np
-        >>> adv = get_advantage_from_zcdp_approx(rho=0.5)
-        >>> np.round(adv, 3)
-        0.456
-
-    Note:
-        Fitted for rho values in [0.005, 8.5]. Approximation error is
-        typically <0.025. For higher accuracy, use `get_advantage_from_zcdp()`.
-
-    References:
-        Bun & Steinke (2016). https://arxiv.org/abs/1605.02065
-        Dong et al. (2019), Corollary 2.13. https://arxiv.org/abs/1905.02383
-    """
-    return get_advantage_from_gdp(get_mu_from_zcdp_approx(rho))

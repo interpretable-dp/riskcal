@@ -202,27 +202,6 @@ def test_bayes_risk_from_pld_matches_kaissis_definition(prior):
     )
 
 
-@pytest.mark.parametrize("rho", list(np.linspace(0.005, 6, 10)))
-def test_zcdp_beta_bounds_close_to_fitted_gdp(rho):
-    tol = 0.025
-    alpha = np.linspace(0, 1, 100)
-    beta_gdp = riskcal.analysis.conversions.get_beta_from_zcdp_approx(
-        rho=rho, alpha=alpha
-    )
-    beta_zcdp = riskcal.analysis.get_beta_from_zcdp(rho=rho, alpha=alpha)
-
-    for i in range(len(alpha)):
-        assert beta_gdp[i] == pytest.approx(beta_zcdp[i], abs=tol)
-
-
-@pytest.mark.parametrize("rho", list(np.linspace(0.005, 6, 10)))
-def test_zcdp_advantage_bounds_close_to_fitted_gdp(rho):
-    tol = 0.025
-    adv_gdp = riskcal.analysis.conversions.get_advantage_from_zcdp_approx(rho=rho)
-    adv_zcdp = riskcal.analysis.get_advantage_from_zcdp(rho=rho)
-    assert adv_gdp == pytest.approx(adv_zcdp, abs=tol)
-
-
 def test_advantage_from_zcdp_decreases_with_smaller_rho():
     """Test that advantage decreases as privacy increases (rho decreases)."""
     rhos = [2.0, 1.0, 0.5, 0.1]

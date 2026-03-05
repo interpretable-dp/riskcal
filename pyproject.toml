@@ -39,7 +39,6 @@ docs = [
 dev = [
     "cython>=0.29",
     "ipdb>=0.13.13",
-    "numpy>=1.21",
     "opacus==1.4.0",
     "pluggy>=1.6.0",
     "pre-commit>=4.2.0",
@@ -67,3 +66,17 @@ default-groups = []
 [build-system]
 requires = ["setuptools>=64", "wheel", "Cython>=0.29", "numpy>=1.21"]
 build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+build = "cp39-* cp310-* cp311-* cp312-* cp313-*"
+skip = ["pp*", "*-win32", "*-manylinux_i686"]
+test-command = 'python -c "from riskcal.analysis.rdp import is_cython_available; assert is_cython_available()"'
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64", "aarch64"]
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]

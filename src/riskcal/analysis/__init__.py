@@ -34,10 +34,6 @@ from riskcal.analysis.conversions import (
     # ADP
     get_epsilon_from_err_rates,
     get_epsilon_for_err_rates,
-    # Approximate zCDP conversions
-    get_mu_from_zcdp_approx,
-    get_beta_from_zcdp_approx,
-    get_advantage_from_zcdp_approx,
 )
 
 __all__ = [
@@ -69,8 +65,4 @@ __all__ = [
     # Conversions
     "get_epsilon_from_err_rates",
     "get_epsilon_for_err_rates",  # Deprecated alias
-    # Approximate zCDP conversions
-    "get_mu_from_zcdp_approx",
-    "get_beta_from_zcdp_approx",
-    "get_advantage_from_zcdp_approx",
 ]
