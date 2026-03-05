@@ -14,6 +14,8 @@ from dp_accounting.pld import privacy_loss_distribution
 from riskcal.analysis import _plrv
 from riskcal.utils import _ensure_array
 
+from riskcal.analysis.rdp import get_FNR as _get_FNR_from_rdp
+
 
 # =============================================================================
 # Internal conversions
@@ -354,128 +356,38 @@ get_epsilon_for_err_rates.__deprecated__ = "2.0.0"
 # =============================================================================
 
 
-def _check_renyi_constraints(epsilon: float, y: float, x: float, order: float) -> bool:
-    # In the Zhu et al.'s notation:
-    # alpha (from input) -> x (Type I error)
-    # beta (the return value) -> y (Type II error)
-    # order -> alpha (Rényi divergence order)
-
-    # Precompute terms in log space
-    logx = np.log(x)
-    log1mx = np.log1p(-x)
-    logy = np.log(y)
-    log1my = np.log1p(-y)
-
-    # Case where order != 1
-    if order != 1:
-        upper = (order - 1) * epsilon
-        sign_order = np.sign(order - 1)
-        one_minus_order = 1 - order
-
-        log_f2 = np.logaddexp(
-            order * logx + one_minus_order * log1my,
-            order * log1mx + one_minus_order * logy,
-        )
-        constraint2 = sign_order * (upper - log_f2) >= 0
-
-        log_f1 = np.logaddexp(
-            order * log1my + one_minus_order * logx,
-            order * logy + one_minus_order * log1mx,
-        )
-        constraint1 = sign_order * (upper - log_f1) >= 0
-
-    # Case where order == 1
-    else:
-        upper = epsilon
-        f1 = x * (logx - log1my) + (1 - x) * (log1mx - logy)
-        constraint1 = upper - f1 >= 0
-        f2 = y * (logy - log1mx) + (1 - y) * (log1my - logx)
-        constraint2 = upper - f2 >= 0
-
-    return constraint1 and constraint2
-
-
 def get_beta_from_rdp(
     epsilon: float,
-    alpha: float,
+    alpha: Union[float, np.ndarray],
     order: float,
-    linear_search_step: float = 1e-3,
-    max_bisection_steps: int = 50,
-    tol: float = 1e-5,
-) -> float:
+    linear_search_step: float = 1e-3,   # unused; kept for backward compatibility
+    max_bisection_steps: int = 50,       # unused; kept for backward compatibility
+    tol: float = 1e-7,
+) -> Union[float, np.ndarray]:
     """
     Compute FNR for FPR from Renyi DP parameters.
 
-    Uses linear search to find a feasible region, then bisection search to
-    refine the optimal beta (FNR) for a given alpha (FPR). This directly
-    implements the hypothesis testing trade-off for Renyi DP.
+    Uses the optimal conversion from a single RDP guarantee to a tradeoff
+    function (Riess et al., 2026). Accepts scalar or array FPR values.
 
     Args:
         epsilon: Renyi divergence parameter (privacy budget).
-        alpha: False positive rate (FPR) in [0, 1].
+        alpha: False positive rate(s) (FPR) in [0, 1]. Scalar or array.
         order: Order of Renyi divergence (alpha in Renyi DP literature).
-        linear_search_step: Step size for linear search phase. Smaller values
-            give more precision but slower execution.
-        max_bisection_steps: Maximum iterations for bisection refinement.
-        tol: Numerical tolerance for convergence and avoiding log(0).
+        linear_search_step: Unused. Kept for backward compatibility.
+        max_bisection_steps: Unused. Kept for backward compatibility.
+        tol: Numerical tolerance for bisection convergence.
 
     Returns:
         False negative rate (FNR) corresponding to input alpha.
 
-    Example:
-        >>> import numpy as np
-        >>> # Renyi DP with epsilon=1.0 at order 2
-        >>> beta = get_beta_from_rdp(epsilon=1.0, alpha=0.1, order=2.0)
-        >>> np.round(beta, 3)
-        0.507
-
     References:
+        Riess et al. (2026). https://arxiv.org/abs/2602.04562
         Zhu et al. (2022), Appendix F.1. https://arxiv.org/abs/2106.08567
     """
-    # Use linear search to find the feasible region boundaries
-    # Search from below (beta=0 upward)
-    beta1 = tol  # Start slightly above 0 to avoid log(0)
-    while beta1 < 1 and not _check_renyi_constraints(epsilon, beta1, alpha, order):
-        beta1 += linear_search_step
-    beta1 = min(beta1, 1.0)
-
-    # Search from above (beta=1 downward)
-    beta2 = 1 - tol  # Start slightly below 1 to avoid log(0)
-    while beta2 > 0 and not _check_renyi_constraints(epsilon, beta2, alpha, order):
-        beta2 -= linear_search_step
-    beta2 = max(beta2, 0.0)
-
-    # Set bisection bracket
-    beta_low = min(beta1, beta2)
-    beta_high = max(beta1, beta2)
-
-    # Ensure we have a valid bracket
-    if beta_low >= beta_high:
-        # Check edge cases
-        if _check_renyi_constraints(epsilon, beta_low, alpha, order):
-            return beta_low
-        elif _check_renyi_constraints(epsilon, beta_high, alpha, order):
-            return beta_high
-        else:
-            return 0.0
-
-    # Bisection to find the minimum beta that satisfies constraints
-    for _ in range(max_bisection_steps):
-        if np.abs(beta_high - beta_low) <= tol:
-            break
-        beta_mid = (beta_low + beta_high) / 2
-        if _check_renyi_constraints(epsilon, beta_mid, alpha, order):
-            beta_high = beta_mid
-        else:
-            beta_low = beta_mid
-
-    # Return a conservative solution
-    if _check_renyi_constraints(epsilon, beta_low, alpha, order):
-        return beta_low
-    elif _check_renyi_constraints(epsilon, beta_high, alpha, order):
-        return beta_high
-    else:
-        return 0.0
+    # Note: riskcal uses 'epsilon' for the Renyi divergence value and 'order'
+    # for the Renyi order; _get_FNR_from_rdp uses 'rho' and 'alpha' for the same.
+    return _get_FNR_from_rdp(x_array=alpha, alpha=order, rho=epsilon, tol=tol)
 
 
 # =============================================================================
@@ -560,21 +472,27 @@ def get_beta_from_zcdp(
                 else:
                     order_grid_size = HIGH_GRID_SIZE
 
-            # Initial coarse grid search
+            # Initial coarse grid search.
+            # Overflow warnings from get_FNR are suppressed here: exploring a
+            # wide order grid intentionally includes orders where the RDP bound
+            # is vacuous (returns 0). That is expected algorithm behaviour, not
+            # a caller mistake.
             orders = np.logspace(np.log10(0.5), np.log10(max_order), order_grid_size)
-            betas_for_orders = np.array(
-                [
-                    get_beta_from_rdp(
-                        epsilon=rho * order,
-                        alpha=alpha_val,
-                        order=order,
-                        linear_search_step=linear_search_step,
-                        max_bisection_steps=max_bisection_steps,
-                        tol=tol,
-                    )
-                    for order in orders
-                ]
-            )
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                betas_for_orders = np.array(
+                    [
+                        get_beta_from_rdp(
+                            epsilon=rho * order,
+                            alpha=alpha_val,
+                            order=order,
+                            linear_search_step=linear_search_step,
+                            max_bisection_steps=max_bisection_steps,
+                            tol=tol,
+                        )
+                        for order in orders
+                    ]
+                )
 
             # Find the order that gives maximum beta
             best_idx = np.argmax(betas_for_orders)
@@ -586,17 +504,19 @@ def get_beta_from_zcdp(
                 order_high = orders[best_idx + 1]
 
                 # Try bounded optimization to refine
-                result = optimize.minimize_scalar(
-                    lambda order: -get_beta_from_rdp(
-                        epsilon=rho * order,
-                        alpha=alpha_val,
-                        order=order,
-                        linear_search_step=linear_search_step,
-                        max_bisection_steps=max_bisection_steps,
-                        tol=tol,
-                    ),
-                    bounds=(order_low, order_high),
-                    method="bounded",
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", RuntimeWarning)
+                    result = optimize.minimize_scalar(
+                        lambda order: -get_beta_from_rdp(
+                            epsilon=rho * order,
+                            alpha=alpha_val,
+                            order=order,
+                            linear_search_step=linear_search_step,
+                            max_bisection_steps=max_bisection_steps,
+                            tol=tol,
+                        ),
+                        bounds=(order_low, order_high),
+                        method="bounded",
                     options={"xatol": tol},
                 )
 
