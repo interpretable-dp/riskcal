@@ -235,3 +235,88 @@ def test_advantage_from_zcdp_decreases_with_smaller_rho():
             f"rho={rhos[i]} gave {advantages[i]}, "
             f"rho={rhos[i+1]} gave {advantages[i+1]}"
         )
+
+
+# =============================================================================
+# RDP (Renyi Differential Privacy)
+# =============================================================================
+
+
+@pytest.mark.parametrize(
+    "epsilon,order",
+    [
+        (1.0, 2.0),   # order > 1
+        (0.5, 1.0),   # order == 1
+        (1.0, 0.7),   # order < 1
+    ],
+)
+def test_get_beta_from_rdp_is_decreasing(epsilon, order):
+    """Beta should be monotonically decreasing as alpha (FPR) increases."""
+    alphas = np.linspace(0.01, 0.99, 50)
+    betas = np.array([
+        riskcal.analysis.get_beta_from_rdp(epsilon=epsilon, alpha=a, order=order)
+        for a in alphas
+    ])
+    # Allow tolerance matching the bisection accuracy (tol=1e-7 default)
+    assert np.all(np.diff(betas) <= 1e-6), (
+        f"beta not monotonically decreasing for epsilon={epsilon}, order={order}"
+    )
+
+
+@pytest.mark.parametrize(
+    "epsilon,order",
+    [
+        (1.0, 2.0),
+        (0.5, 1.0),
+        (1.0, 0.7),
+    ],
+)
+def test_get_beta_from_rdp_scalar_and_array_agree(epsilon, order):
+    """Scalar and array inputs should produce identical results."""
+    alphas = np.array([0.01, 0.05, 0.1, 0.3, 0.5])
+    beta_array = riskcal.analysis.get_beta_from_rdp(
+        epsilon=epsilon, alpha=alphas, order=order
+    )
+    beta_scalars = np.array([
+        riskcal.analysis.get_beta_from_rdp(epsilon=epsilon, alpha=float(a), order=order)
+        for a in alphas
+    ])
+    np.testing.assert_allclose(beta_array, beta_scalars, rtol=1e-6)
+
+
+@pytest.mark.parametrize("epsilon,order", [(1.0, 2.0), (0.5, 3.0), (2.0, 1.5)])
+def test_get_beta_from_rdp_edge_cases(epsilon, order):
+    """At alpha=0 beta should be 1; at alpha=1 beta should be 0."""
+    assert riskcal.analysis.get_beta_from_rdp(
+        epsilon=epsilon, alpha=0.0, order=order
+    ) == pytest.approx(1.0, abs=1e-6)
+    assert riskcal.analysis.get_beta_from_rdp(
+        epsilon=epsilon, alpha=1.0, order=order
+    ) == pytest.approx(0.0, abs=1e-6)
+
+
+@pytest.mark.parametrize("rho", list(np.linspace(0.1, 3.0, 6)))
+def test_get_beta_from_rdp_single_order_leq_zcdp(rho):
+    """
+    get_beta_from_zcdp maximizes over orders, so it must be >= any single-order bound.
+    """
+    order = 3.0
+    alpha = 0.1
+    beta_rdp = riskcal.analysis.get_beta_from_rdp(
+        epsilon=rho * order, alpha=alpha, order=order
+    )
+    beta_zcdp = riskcal.analysis.get_beta_from_zcdp(rho=rho, alpha=alpha)
+    assert beta_zcdp >= beta_rdp - 1e-6, (
+        f"zCDP beta {beta_zcdp} should be >= single-order RDP beta {beta_rdp}"
+    )
+
+
+def test_get_beta_from_rdp_backward_compat_params():
+    """linear_search_step and max_bisection_steps are accepted but ignored."""
+    beta1 = riskcal.analysis.get_beta_from_rdp(epsilon=1.0, alpha=0.1, order=2.0)
+    beta2 = riskcal.analysis.get_beta_from_rdp(
+        epsilon=1.0, alpha=0.1, order=2.0,
+        linear_search_step=0.01,
+        max_bisection_steps=10,
+    )
+    assert beta1 == pytest.approx(beta2, rel=1e-9)

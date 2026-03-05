@@ -1,6 +1,6 @@
 [project]
 name = "riskcal"
-version = "1.4.1"
+version = "1.5.0"
 requires-python = ">=3.10"
 description = "Compute f-DP trade-off curves and calibrate differentially private algorithms to operational privacy risk measures"
 authors = [
@@ -37,7 +37,9 @@ docs = [
 
 [dependency-groups]
 dev = [
+    "cython>=0.29",
     "ipdb>=0.13.13",
+    "numpy>=1.21",
     "opacus==1.4.0",
     "pluggy>=1.6.0",
     "pre-commit>=4.2.0",
@@ -63,5 +65,5 @@ testpaths = ["tests", "README.md"]
 default-groups = []
 
 [build-system]
-requires = ["uv_build>=0.7.19,<0.8.0"]
-build-backend = "uv_build"
+requires = ["setuptools>=64", "wheel", "Cython>=0.29", "numpy>=1.21"]
+build-backend = "setuptools.build_meta"
