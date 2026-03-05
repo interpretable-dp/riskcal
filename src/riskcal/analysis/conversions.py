@@ -592,3 +592,42 @@ def get_advantage_from_zcdp(
         return np.nan
     else:
         return -result.fun
+
+
+def get_mu_from_zcdp_approx(rho: float) -> float:
+    """Deprecated. Use get_beta_from_zcdp or get_advantage_from_zcdp instead."""
+    warnings.warn(
+        "get_mu_from_zcdp_approx is deprecated and will be removed in a future version. "
+        "Use get_beta_from_zcdp or get_advantage_from_zcdp for exact computations.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return (
+        1.5822558654881096 * np.sqrt(rho)
+        + 0.08064620797681155 * rho
+        + 0.05485600531538526
+    )
+
+
+def get_beta_from_zcdp_approx(
+    rho: float, alpha: Union[float, np.ndarray]
+) -> Union[float, np.ndarray]:
+    """Deprecated. Use get_beta_from_zcdp instead."""
+    warnings.warn(
+        "get_beta_from_zcdp_approx is deprecated and will be removed in a future version. "
+        "Use get_beta_from_zcdp for exact computation.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return get_beta_from_zcdp(rho, alpha=alpha)
+
+
+def get_advantage_from_zcdp_approx(rho: float) -> float:
+    """Deprecated. Use get_advantage_from_zcdp instead."""
+    warnings.warn(
+        "get_advantage_from_zcdp_approx is deprecated and will be removed in a future version. "
+        "Use get_advantage_from_zcdp for exact computation.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return get_advantage_from_zcdp(rho)

@@ -25,6 +25,9 @@ from riskcal.analysis.conversions import (
     get_advantage_from_gdp,
     get_advantage_from_adp,
     get_advantage_from_zcdp,
+    get_mu_from_zcdp_approx,
+    get_beta_from_zcdp_approx,
+    get_advantage_from_zcdp_approx,
     get_advantage_for_mu,
     get_advantage_for_epsilon_delta,
     # Bayes risk functions
@@ -56,6 +59,9 @@ __all__ = [
     "get_advantage_from_gdp",
     "get_advantage_from_adp",
     "get_advantage_from_zcdp",
+    "get_mu_from_zcdp_approx",  # Deprecated
+    "get_beta_from_zcdp_approx",  # Deprecated
+    "get_advantage_from_zcdp_approx",  # Deprecated
     "get_advantage_for_mu",  # Deprecated alias
     "get_advantage_for_epsilon_delta",  # Deprecated alias
     # Bayes risk functions
