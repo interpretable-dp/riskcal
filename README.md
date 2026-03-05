@@ -63,8 +63,8 @@ Risks in Differential Privacy](https://arxiv.org/abs/2507.06969). NeurIPS 2025.
 If you make use of the library or methods, please cite:
 ```bibtex
 @article{kulynych2024attack,
-  title={Attack-aware noise calibration for differential privacy},
-  author={Kulynych, Bogdan and Gomez, Juan F and Kaissis, Georgios and du Pin Calmon, Flavio and Troncoso, Carmela},
+  title={Attack-Aware Noise Calibration for Differential Privacy},
+  author={Kulynych, Bogdan and Gomez, Juan Felipe and Kaissis, Georgios and du Pin Calmon, Flavio and Troncoso, Carmela},
   journal={Advances in Neural Information Processing Systems},
   volume={37},
   year={2024}
