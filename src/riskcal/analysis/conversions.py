@@ -382,12 +382,10 @@ def get_beta_from_rdp(
         False negative rate (FNR) corresponding to input alpha.
 
     References:
-        Riess et al. (2026). https://arxiv.org/abs/2602.04562
         Zhu et al. (2022), Appendix F.1. https://arxiv.org/abs/2106.08567
+        Riess et al. (2026). https://arxiv.org/abs/2602.04562
     """
-    # Note: riskcal uses 'epsilon' for the Renyi divergence value and 'order'
-    # for the Renyi order; _get_FNR_from_rdp uses 'rho' and 'alpha' for the same.
-    return _get_FNR_from_rdp(x_array=alpha, alpha=order, rho=epsilon, tol=tol)
+    return _get_FNR_from_rdp(alpha_array=alpha, order=order, epsilon=epsilon, tol=tol)
 
 
 # =============================================================================
@@ -398,11 +396,10 @@ def get_beta_from_rdp(
 def get_beta_from_zcdp(
     rho: float,
     alpha: Union[float, np.ndarray],
-    max_bisection_steps: int = 100,
-    linear_search_step: float = 5e-4,
     tol: float = 1e-9,
-    max_order: Optional[float] = None,
-    order_grid_size: Optional[int] = None,
+    min_order: float = 1.0,
+    max_order: float = 1024.0,
+    grid_size=1000,
 ) -> Union[float, np.ndarray]:
     """
     Compute FNR for FPR from zCDP parameter rho.
@@ -415,15 +412,8 @@ def get_beta_from_zcdp(
     Args:
         rho: Zero-concentrated differential privacy parameter.
         alpha: False positive rate(s) in [0, 1]. Can be scalar or array.
-        max_bisection_steps: Maximum number of bisection iterations for beta search.
-            Increase for higher precision at the cost of computation time.
-        linear_search_step: Step size for linear search to find feasible region.
-            Smaller values give more precision but slower execution.
         tol: Tolerance for numerical convergence and avoiding log(0).
-        max_order: Maximum Renyi DP order to consider. If None, chosen adaptively
-            based on rho (higher orders for smaller rho values).
-        order_grid_size: Number of grid points for initial order search. If None,
-            chosen adaptively based on rho.
+        max_order: Maximum Renyi DP order to consider.
 
     Returns:
         False negative rate(s) corresponding to input alpha. Returns float if
@@ -443,104 +433,54 @@ def get_beta_from_zcdp(
     References:
         Bun & Steinke (2016). https://arxiv.org/abs/1605.02065
         Zhu et al. (2022), Appendix F.1. https://arxiv.org/abs/2106.08567
+        Riess et al. (2026). https://arxiv.org/abs/2602.04562
     """
-    HIGH_ORDER_THRESH = 0.05
-    LOW_MAX_ORDER = 20
-    HIGH_MAX_ORDER = 50
+    scalar_input = isinstance(alpha, (int, float))
+    alpha_arr = np.atleast_1d(np.asarray(alpha, dtype=float))
 
-    HIGH_GRID_THRESH = 1.5
-    HIGH_GRID_SIZE = 100
-    LOW_GRID_SIZE = 10
+    result = np.empty_like(alpha_arr)
+    low = alpha_arr <= tol
+    high = alpha_arr >= 1 - tol
+    interior = ~low & ~high
 
-    beta = []
-    for alpha_val in np.atleast_1d(alpha):
-        if alpha_val <= tol:
-            beta.append(1.0)
-        elif alpha_val >= 1 - tol:
-            beta.append(0.0)
-        else:
-            # Adaptive order optimization heuristics
-            if max_order is None:
-                if rho <= HIGH_ORDER_THRESH:
-                    max_order = HIGH_MAX_ORDER
-                else:
-                    max_order = LOW_MAX_ORDER
+    result[low] = 1.0
+    result[high] = 0.0
 
-            if order_grid_size is None:
-                if rho <= HIGH_GRID_THRESH:
-                    order_grid_size = LOW_GRID_SIZE
-                else:
-                    order_grid_size = HIGH_GRID_SIZE
-
-            # Initial coarse grid search.
-            # Overflow warnings from get_FNR are suppressed here: exploring a
-            # wide order grid intentionally includes orders where the RDP bound
-            # is vacuous (returns 0). That is expected algorithm behaviour, not
-            # a caller mistake.
-            orders = np.logspace(0, np.log10(max_order), order_grid_size)
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore", RuntimeWarning)
-                betas_for_orders = np.array(
-                    [
+    orders_grid = np.concatenate(
+        [
+            np.linspace(min_order, 2, grid_size // 3)[:-1],
+            np.linspace(2, 16, grid_size // 3)[:-1],
+            np.logspace(np.log10(16), np.log10(max_order), grid_size // 3),
+        ]
+    )
+    if interior.any():
+        alpha_interior = alpha_arr[interior]
+        best_vals = np.zeros(alpha_interior.shape)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            for order in orders_grid:
+                best_vals = np.maximum(
+                    best_vals,
+                    np.atleast_1d(
                         get_beta_from_rdp(
                             epsilon=rho * order,
-                            alpha=alpha_val,
+                            alpha=alpha_interior,
                             order=order,
-                            linear_search_step=linear_search_step,
-                            max_bisection_steps=max_bisection_steps,
                             tol=tol,
                         )
-                        for order in orders
-                    ]
+                    ),
                 )
+        result[interior] = best_vals
 
-            # Find the order that gives maximum beta
-            best_idx = np.argmax(betas_for_orders)
-            best_beta = betas_for_orders[best_idx]
-
-            # Refinement: use bounded optimization around the best order
-            if best_idx > 0 and best_idx < len(orders) - 1:
-                order_low = orders[best_idx - 1]
-                order_high = orders[best_idx + 1]
-
-                # Try bounded optimization to refine
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", RuntimeWarning)
-                    result = optimize.minimize_scalar(
-                        lambda order: -get_beta_from_rdp(
-                            epsilon=rho * order,
-                            alpha=alpha_val,
-                            order=order,
-                            linear_search_step=linear_search_step,
-                            max_bisection_steps=max_bisection_steps,
-                            tol=tol,
-                        ),
-                        bounds=(order_low, order_high),
-                        method="bounded",
-                        options={"xatol": tol},
-                    )
-
-                if result.success and (abs(result.x - max_order) <= tol):
-                    warnings.warn(
-                        "Optimal order is close to the maximum order. Consider increasing max_order"
-                    )
-
-                # Only use optimization result if it's successful AND better than grid search
-                if result.success and -result.fun >= best_beta:
-                    best_beta = -result.fun
-
-            beta.append(best_beta)
-
-    return beta[0] if isinstance(alpha, (int, float)) else np.array(beta)
+    return float(result[0]) if scalar_input else result
 
 
 def get_advantage_from_zcdp(
     rho: float,
-    max_bisection_steps: int = 100,
-    linear_search_step: float = 5e-4,
-    tol: float = 1e-4,
-    max_order: Optional[float] = None,
-    order_grid_size: Optional[int] = None,
+    tol: float = 1e-9,
+    min_order: float = 1.0,
+    max_order: float = 1024.0,
+    grid_size: int = 1000,
 ) -> float:
     """
     Compute attack advantage from zCDP parameter rho.
@@ -551,12 +491,10 @@ def get_advantage_from_zcdp(
 
     Args:
         rho: Zero-concentrated differential privacy parameter.
-        max_bisection_steps: Maximum number of bisection iterations for beta search.
-        linear_search_step: Step size for linear search to find feasible region.
-        tol: Tolerance for convergence.
-        max_order: Max Renyi DP order. If None, choose based on a heuristic.
-        order_grid_size: Number of grid points for initial order search. If None,
-            choose based on a heuristic.
+        tol: Tolerance for numerical convergence and avoiding log(0).
+        min_order: Minimum Renyi DP order to consider.
+        max_order: Maximum Renyi DP order to consider.
+        grid_size: Number of orders to evaluate in the grid search.
 
     Returns:
         Maximum attack advantage.
@@ -572,20 +510,14 @@ def get_advantage_from_zcdp(
     """
     result = optimize.minimize_scalar(
         lambda alpha: -(
-            1
-            - alpha
-            - get_beta_from_zcdp(
-                rho=rho,
-                alpha=alpha,
-                max_bisection_steps=max_bisection_steps,
-                linear_search_step=linear_search_step,
-                tol=tol,
-                max_order=max_order,
-                order_grid_size=order_grid_size,
+            1 - alpha - get_beta_from_zcdp(
+                rho=rho, alpha=alpha, tol=tol, min_order=min_order,
+                max_order=max_order, grid_size=grid_size,
             )
         ),
         bounds=(0, 1),
         method="bounded",
+        options={"xatol": 1e-12},
     )
     if not result.success:
         warnings.warn("Optimization failed for advantage calculation")
