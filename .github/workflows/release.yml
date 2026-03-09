@@ -11,17 +11,24 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
 
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up QEMU (Linux aarch64)
-        if: matrix.os == 'ubuntu-latest'
-        uses: docker/setup-qemu-action@v3
+      - name: Pre-download virtualenv for cibuildwheel
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            CACHE_DIR="$HOME/Library/Caches/cibuildwheel"
+          else
+            CACHE_DIR="$HOME/.cache/cibuildwheel"
+          fi
+          mkdir -p "$CACHE_DIR"
+          curl -fsSL "https://raw.githubusercontent.com/pypa/get-virtualenv/20.30.0/public/virtualenv.pyz" \
+            -o "$CACHE_DIR/virtualenv-20.30.0.pyz"
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.22
+        uses: pypa/cibuildwheel@v2.23
 
       - uses: actions/upload-artifact@v4
         with:
