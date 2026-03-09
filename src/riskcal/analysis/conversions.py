@@ -236,9 +236,9 @@ def get_bayes_risk_from_gdp(mu, prior):
         Bayes risk value(s). Float if prior is scalar, array if prior is array.
 
     References:
-        Kulynych et al. (2025), Proposition D.1 / Eq. 35.
-        https://arxiv.org/abs/2507.06969
-        Dong et al. (2019), Corollary 2.13. https://arxiv.org/abs/1905.02383
+        - Kulynych et al. (2025), Proposition D.1 / Eq. 35.
+          https://arxiv.org/abs/2507.06969
+        - Dong et al. (2019), Corollary 2.13. https://arxiv.org/abs/1905.02383
     """
     assert mu >= 0, "mu must be >= 0"
     prior, is_scalar = _ensure_array(prior)
@@ -382,8 +382,8 @@ def get_beta_from_rdp(
         False negative rate (FNR) corresponding to input alpha.
 
     References:
-        Zhu et al. (2022), Appendix F.1. https://arxiv.org/abs/2106.08567
-        Riess et al. (2026). https://arxiv.org/abs/2602.04562
+        - Zhu et al. (2022), Appendix F.1. https://arxiv.org/abs/2106.08567
+        - Riess et al. (2026). https://arxiv.org/abs/2602.04562
     """
     return _get_FNR_from_rdp(alpha_array=alpha, order=order, epsilon=epsilon, tol=tol)
 
@@ -431,9 +431,9 @@ def get_beta_from_zcdp(
         array([0.517, 0.34, 0.232])
 
     References:
-        Bun & Steinke (2016). https://arxiv.org/abs/1605.02065
-        Zhu et al. (2022), Appendix F.1. https://arxiv.org/abs/2106.08567
-        Riess et al. (2026). https://arxiv.org/abs/2602.04562
+        - Bun & Steinke (2016). https://arxiv.org/abs/1605.02065
+        - Zhu et al. (2022), Appendix F.1. https://arxiv.org/abs/2106.08567
+        - Riess et al. (2026). https://arxiv.org/abs/2602.04562
     """
     scalar_input = isinstance(alpha, (int, float))
     alpha_arr = np.atleast_1d(np.asarray(alpha, dtype=float))
