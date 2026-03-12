@@ -1,6 +1,6 @@
 [project]
 name = "riskcal"
-version = "1.5.0"
+version = "1.5.1"
 requires-python = ">=3.10"
 description = "Compute f-DP trade-off curves and calibrate differentially private algorithms to operational privacy risk measures"
 authors = [
@@ -65,6 +65,9 @@ testpaths = ["tests", "README.md"]
 [tool.uv]
 default-groups = []
 
+[tool.setuptools.package-data]
+"riskcal.analysis.rdp" = ["*.pyx"]
+
 [build-system]
 requires = ["setuptools>=64", "wheel", "Cython>=0.29", "numpy>=1.21"]
 build-backend = "setuptools.build_meta"
@@ -80,4 +83,3 @@ before-test = "pip install 'scipy>=1.11.3' --only-binary=:all:"
 
 [tool.cibuildwheel.macos]
 archs = ["x86_64", "arm64"]
-
