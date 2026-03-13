@@ -1,4 +1,4 @@
-## Code for "Unifying Re-Identification, Attribute Inference, and Data Reconstruction Risks in Differential Privacy."
+# Code for "Unifying Re-Identification, Attribute Inference, and Data Reconstruction Risks in Differential Privacy"
 
 This is the accompanying code to the paper "[Unifying Re-Identification, Attribute Inference, and Data
 Reconstruction Risks in Differential Privacy.](https://arxiv.org/abs/2507.06969)".  The notebook

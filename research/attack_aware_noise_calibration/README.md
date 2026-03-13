@@ -1,4 +1,4 @@
-# Code for "Attack-Aware Noise Calibraiton for Differential Privacy"
+# Code for "Attack-Aware Noise Calibration for Differential Privacy"
 
 This is the accompanying code to the paper "[Attack-Aware Noise Calibration for Differential
 Privacy](https://arxiv.org/abs/2407.02191)".
